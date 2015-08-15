@@ -5,8 +5,9 @@ import string
 import random
 import pwd
 from dateutil.parser import parse
-from flask import Flask, json, abort, make_response
+from flask import Flask, jsonify, abort, make_response
 from flask_httpauth import HTTPBasicAuth
+from werkzeug.contrib.cache import SimpleCache
 
 #Get config variables
 try:
@@ -20,7 +21,7 @@ except KeyError, e:
 #Init app
 app = Flask(__name__)
 auth = HTTPBasicAuth()
-app.config["JSON_SORT_KEY"] = False
+cache = SimpleCache()
 
 
 #Authentication
@@ -69,37 +70,36 @@ def newest_modification_date(folder):
 	dt = parse(newest_date)
 	return dt.strftime('%Y-%m-%dT%H:%M:%S%z')
 
+#Classes
 
-#Routes:
+#Routes
 @app.route('/accounts', methods=['GET'])
 @auth.login_required
 def listAccounts():
-	data = []
+	accounts = {}
 	for p in pwd.getpwall():
 		if '/home/' in p.pw_dir:
-			if os.path.isdir(p.pw_dir):
-				d = [
-						p.pw_dir,
-						{
-							'username': p.pw_name,
-						 	'file_count': sum([len(files) for r, d, files in os.walk(p.pw_dir)]),
-						 	'total_file_size': int(getFolderSize(p.pw_dir)),
-						 	'first_upload_date': oldest_modification_date(p.pw_dir),
-						 	'last_upload_date': newest_modification_date(p.pw_dir)
-						}
-					]
-				data.append(d)
-			else:
-				d = [
-						p.pw_dir, 
-						{
-							'username': p.pw_name,
-							'error': 'Could not read data'
-						}
-					]
-				data.append(d)
+			account = cache.get(p.pw_name)
+			if account is None:
+				if os.path.isdir(p.pw_dir):
+					account = {
+								'username': p.pw_name,
+							 	'file_count': sum([len(files) for r, d, files in os.walk(p.pw_dir)]),
+							 	'total_file_size': int(getFolderSize(p.pw_dir)),
+							 	'first_upload_date': oldest_modification_date(p.pw_dir),
+							 	'last_upload_date': newest_modification_date(p.pw_dir),
+							}
+				else:
+					account = {
+					
+								'username': p.pw_name,
+								'error': 'Could not read data'
+							
+							}
+				cache.set(p.pw_name, account, timeout = 2 * 60)
+			accounts[p.pw_dir] = account
+	return jsonify({'accounts': accounts})
 
-	return json.dumps(data)
 
 @app.route('/accounts/create', methods=['POST'])
 @auth.login_required
