@@ -41,6 +41,7 @@ def unauthorized():
 def unprocessable(error):
 	return make_response(jsonify({'status': 'error', 'error': 'cannot generate proper username'}), 422)
 
+
 #Helping functions
 def getFolderSize(folder):
     total_size = os.path.getsize(folder)
@@ -70,7 +71,6 @@ def newest_modification_date(folder):
 	dt = parse(newest_date)
 	return dt.strftime('%Y-%m-%dT%H:%M:%S%z')
 
-#Classes
 
 #Routes
 @app.route('/accounts', methods=['GET'])
@@ -103,7 +103,6 @@ def listAccounts():
 			accounts[p.pw_dir] = account
 	os.remove('./get_accounts.flag')
 	return jsonify({'accounts': accounts})
-
 
 @app.route('/accounts/create', methods=['POST'])
 @auth.login_required
