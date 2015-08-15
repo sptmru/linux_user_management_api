@@ -5,6 +5,7 @@ import string
 import random
 import pwd
 from flask import Flask, jsonify, abort, make_response
+from flask_httpauth import HTTPBasicAuth
 
 #Get config variables
 try:
@@ -17,9 +18,22 @@ except KeyError, e:
 	
 #Init app
 app = Flask(__name__)
+auth = HTTPBasicAuth()
+
+
+#Authentication
+@auth.get_password
+def get_password(username):
+	if username == 'key':
+		return key
+	return None
 
 
 #Error handlers:
+@auth.error_handler
+def unauthorized():
+	return make_response(jsonify({'error': 'Unauthorized access'}), 401)
+
 @app.errorhandler(422)
 def unprocessable(error):
 	return make_response(jsonify({'status': 'error', 'error': 'cannot generate proper username'}), 422)
@@ -27,10 +41,12 @@ def unprocessable(error):
 
 #Routes:
 @app.route('/accounts', methods=['GET'])
+@auth.login_required
 def listAccounts():
 	return "Under Construction"
 
 @app.route('/accounts/create', methods=['POST'])
+@auth.login_required
 def createUser():
 	for i in range(5):
 		try:
@@ -53,10 +69,12 @@ def createUser():
 		abort(422)
 
 @app.route('/accounts/delete/<string:username>', methods=['POST'])
+@auth.login_required
 def deleteUser(username):
 	return "Under Construction"
 
 @app.route('/accounts/resetpassword/<string:username>', methods=['POST'])
+@auth.login_required
 def resetPasswordFor(username):
 	return "Under Construction"
 
