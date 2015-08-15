@@ -1,10 +1,11 @@
 #!flask/bin/python
-import os
+import os, time
 import sys
 import string
 import random
 import pwd
-from flask import Flask, jsonify, abort, make_response
+from dateutil.parser import parse
+from flask import Flask, json, abort, make_response
 from flask_httpauth import HTTPBasicAuth
 
 #Get config variables
@@ -19,6 +20,7 @@ except KeyError, e:
 #Init app
 app = Flask(__name__)
 auth = HTTPBasicAuth()
+app.config["JSON_SORT_KEY"] = False
 
 
 #Authentication
@@ -38,12 +40,66 @@ def unauthorized():
 def unprocessable(error):
 	return make_response(jsonify({'status': 'error', 'error': 'cannot generate proper username'}), 422)
 
+#Helping functions
+def getFolderSize(folder):
+    total_size = os.path.getsize(folder)
+    for item in os.listdir(folder):
+        itempath = os.path.join(folder, item)
+        if os.path.isfile(itempath):
+            total_size += os.path.getsize(itempath)
+        elif os.path.isdir(itempath):
+            total_size += getFolderSize(itempath)
+    return total_size
+
+def oldest_modification_date(folder):
+	oldest_date = time.ctime(os.path.getmtime(min(
+        (os.path.join(dirname, filename)
+        for dirname, dirnames, filenames in os.walk(folder)
+        for filename in filenames),
+        key=lambda fn: os.stat(fn).st_mtime)))
+	dt = parse(oldest_date)
+	return dt.strftime('%Y-%m-%dT%H:%M:%S%z')
+
+def newest_modification_date(folder):
+	newest_date = time.ctime(os.path.getmtime(max(
+        (os.path.join(dirname, filename)
+        for dirname, dirnames, filenames in os.walk(folder)
+        for filename in filenames),
+        key=lambda fn: os.stat(fn).st_mtime)))
+	dt = parse(newest_date)
+	return dt.strftime('%Y-%m-%dT%H:%M:%S%z')
+
 
 #Routes:
 @app.route('/accounts', methods=['GET'])
 @auth.login_required
 def listAccounts():
-	return "Under Construction"
+	data = []
+	for p in pwd.getpwall():
+		if '/home/' in p.pw_dir:
+			if os.path.isdir(p.pw_dir):
+				d = [
+						p.pw_dir,
+						{
+							'username': p.pw_name,
+						 	'file_count': sum([len(files) for r, d, files in os.walk(p.pw_dir)]),
+						 	'total_file_size': int(getFolderSize(p.pw_dir)),
+						 	'first_upload_date': oldest_modification_date(p.pw_dir),
+						 	'last_upload_date': newest_modification_date(p.pw_dir)
+						}
+					]
+				data.append(d)
+			else:
+				d = [
+						p.pw_dir, 
+						{
+							'username': p.pw_name,
+							'error': 'Could not read data'
+						}
+					]
+				data.append(d)
+
+	return json.dumps(data)
 
 @app.route('/accounts/create', methods=['POST'])
 @auth.login_required
