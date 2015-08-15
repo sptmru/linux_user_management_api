@@ -7,12 +7,20 @@ from flask import Flask, jsonify, abort, make_response
 
 app = Flask(__name__)
 
+
+#Error handlers:
 @app.errorhandler(422)
 def unprocessable(error):
 	return make_response(jsonify({'status': 'error', 'error': 'cannot generate proper username'}), 422)
 
+
+#Routes:
+@app.route('/accounts', methods=['GET'])
+def listAccounts():
+	return "Under Construction"
+
 @app.route('/accounts/create', methods=['POST'])
-def get_answer():
+def createUser():
 	for i in range(5):
 		try:
 			username = 'user' + ''.join(random.choice(string.digits) for _ in range(5))
@@ -33,8 +41,13 @@ def get_answer():
 	else:
 		abort(422)
 
+@app.route('/accounts/delete/<string:username>', methods['POST'])
+def deleteUser(username):
+	return "Under Construction"
 
-
+@app.route('/accounts/resetpassword/<string:username>', methods['POST'])
+def resetPasswordFor(username):
+	return "Under Construction"
 
 
 if __name__ == '__main__':
