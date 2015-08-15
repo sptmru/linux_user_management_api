@@ -38,8 +38,8 @@ def get_password(username):
 def unauthorized():
 	return make_response(jsonify({'error': 'Unauthorized access'}), 401)
 
-@auth.error_handler
-def not_found():
+@app.errorhandler(404)
+def not_found(error):
 	return make_response(jsonify({'error': 'User not found'}), 404)
 
 @app.errorhandler(422)
@@ -169,7 +169,21 @@ def deleteUser(username):
 @app.route('/accounts/resetpassword/<string:username>', methods=['POST'])
 @auth.login_required
 def resetPasswordFor(username):
-	return "Under Construction"
+	try:
+		pwd.getpwnam(username)
+		password = ''.join(random.choice('0123456789abcdef') for _ in range (10))
+		setPasswordCommand = 'echo "' + username + ':' + password + '" | chpasswd'
+		set_password_result = subprocess.call(setPasswordCommand, shell=True)
+		apiAnswer = [
+					{
+						'status': 'ok',
+						'username': username,
+						'password': password
+					}
+				]
+		return jsonify(apiAnswer[0])
+	except KeyError:
+		abort(404)
 
 
 #Start app
