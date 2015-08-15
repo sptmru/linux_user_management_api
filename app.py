@@ -76,6 +76,9 @@ def newest_modification_date(folder):
 @app.route('/accounts', methods=['GET'])
 @auth.login_required
 def listAccounts():
+	while os.path.exists('./get_accounts.flag'):
+		time.sleep(1)
+	os.mknod('./get_accounts.flag')
 	accounts = {}
 	for p in pwd.getpwall():
 		if '/home/' in p.pw_dir:
@@ -98,6 +101,7 @@ def listAccounts():
 							}
 				cache.set(p.pw_name, account, timeout = 2 * 60)
 			accounts[p.pw_dir] = account
+	os.remove('./get_accounts.flag')
 	return jsonify({'accounts': accounts})
 
 
