@@ -1,10 +1,21 @@
 #!flask/bin/python
 import os
+import sys
 import string
 import random
 import pwd
 from flask import Flask, jsonify, abort, make_response
 
+#Get config variables
+try:
+	hostname = os.environ['API_HOST']
+	portnumber = os.environ['API_PORT']
+	key = os.environ['API_KEY']
+except KeyError, e:
+	sys.exit("Failed initialize environment variables: please set " + str(e))
+
+	
+#Init app
 app = Flask(__name__)
 
 
@@ -41,14 +52,15 @@ def createUser():
 	else:
 		abort(422)
 
-@app.route('/accounts/delete/<string:username>', methods['POST'])
+@app.route('/accounts/delete/<string:username>', methods=['POST'])
 def deleteUser(username):
 	return "Under Construction"
 
-@app.route('/accounts/resetpassword/<string:username>', methods['POST'])
+@app.route('/accounts/resetpassword/<string:username>', methods=['POST'])
 def resetPasswordFor(username):
 	return "Under Construction"
 
 
+#Start app
 if __name__ == '__main__':
-	app.run(debug=True, host='0.0.0.0')
+	app.run(debug=True, host=hostname, port=int(portnumber))
