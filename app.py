@@ -38,6 +38,10 @@ def get_password(username):
 def unauthorized():
 	return make_response(jsonify({'error': 'Unauthorized access'}), 401)
 
+@auth.error_handler
+def not_found():
+	return make_response(jsonify({'error': 'User not found'}), 404)
+
 @app.errorhandler(422)
 def unprocessable(error):
 	return make_response(jsonify({'status': 'error', 'error': 'cannot create user'}), 422)
@@ -147,7 +151,20 @@ def createUser():
 @app.route('/accounts/delete/<string:username>', methods=['POST'])
 @auth.login_required
 def deleteUser(username):
-	return "Under Construction"
+	try:
+		pwd.getpwnam(username)
+		removeUserCommand = 'userdel -r ' + username
+		remove_result = subprocess.call(removeUserCommand, shell=True)
+		apiAnswer = [
+						{
+							'status': 'ok'
+						}
+				]
+		cache.delete(username)
+		return jsonify(apiAnswer[0])
+	except KeyError:
+		abort(404)
+
 
 @app.route('/accounts/resetpassword/<string:username>', methods=['POST'])
 @auth.login_required
