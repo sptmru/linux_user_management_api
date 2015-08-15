@@ -4,6 +4,7 @@ import sys
 import string
 import random
 import pwd
+import subprocess
 from dateutil.parser import parse
 from flask import Flask, jsonify, abort, make_response
 from flask_httpauth import HTTPBasicAuth
@@ -39,7 +40,7 @@ def unauthorized():
 
 @app.errorhandler(422)
 def unprocessable(error):
-	return make_response(jsonify({'status': 'error', 'error': 'cannot generate proper username'}), 422)
+	return make_response(jsonify({'status': 'error', 'error': 'cannot create user'}), 422)
 
 
 #Helping functions
@@ -114,15 +115,31 @@ def createUser():
 			continue
 		except KeyError:
 			password = ''.join(random.choice('0123456789abcdef') for _ in range (10))
-			createUserCommand = 'useradd --home-dir /home/' + username + ' --create-home --no-user-group --gid 5000 --shell /usr/bin/nologin --comment api ' + username
+			createUserCommand = 'useradd --home-dir /home/' + username + ' --create-home --no-user-group --shell /usr/bin/nologin --comment api ' + username
 			setPasswordCommand = 'echo "' + username + ':' + password + '" | chpasswd'
-			apiAnswer = [
-				{
-					'status': 'ok',
-					'username': username,
-					'password': password
-				}
-			]
+			create_result = subprocess.call(createUserCommand, shell=True)
+			set_password_result = subprocess.call(setPasswordCommand, shell=True)
+			try:
+				pwd.getpwnam(username)
+				for p in pwd.getpwnam(username):
+					account = {
+							'username': username,
+							'file_count': 0,
+							'total_file_size': 0,
+							'first_upload_date': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
+							'last_upload_date': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
+					}
+				cache.set(username, account, timeout = 2 * 60)
+				apiAnswer = [
+					{
+						'status': 'ok',
+						'username': username,
+						'password': password
+					}
+				]
+			except KeyError:
+				abort(422)
+
 			return jsonify(apiAnswer[0])
 	else:
 		abort(422)
