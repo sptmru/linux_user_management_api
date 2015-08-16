@@ -44,7 +44,7 @@ def not_found(error):
 
 @app.errorhandler(422)
 def unprocessable(error):
-	return make_response(jsonify({'status': 'error', 'error': 'cannot create user'}), 422)
+	return make_response(jsonify({'error': 'cannot create user'}), 422)
 
 
 #Helping functions
@@ -81,15 +81,21 @@ def newest_modification_date(folder):
 @app.route('/accounts', methods=['GET'])
 @auth.login_required
 def listAccounts():
+	print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: listing accounts...")
 	while os.path.exists('./get_accounts.flag'):
+		print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: flag exists, queuing operation...")
 		time.sleep(1)
+	print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: creating flag...")
 	os.mknod('./get_accounts.flag')
 	accounts = {}
 	for p in pwd.getpwall():
 		if '/home/' in p.pw_dir:
+			print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: pulling " + p.pw_name + " info from cache...")
 			account = cache.get(p.pw_name)
 			if account is None:
+				print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: there is no " + p.pw_name + " info in cache! Scanning " + p.pw_dir + " ...")
 				if os.path.isdir(p.pw_dir):
+					print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: " + p.pw_dir + " successfully scanned")
 					account = {
 								'username': p.pw_name,
 							 	'file_count': sum([len(files) for r, d, files in os.walk(p.pw_dir)]),
@@ -98,20 +104,24 @@ def listAccounts():
 							 	'last_upload_date': newest_modification_date(p.pw_dir),
 							}
 				else:
+					print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: error accessing " + p.pw_dir + "!")
 					account = {
 					
 								'username': p.pw_name,
 								'error': 'Could not read data'
 							
 							}
+				print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: putting " + p.pw_name + " info to cache...")
 				cache.set(p.pw_name, account, timeout = 2 * 60)
 			accounts[p.pw_dir] = account
+	print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: removing flag...")		
 	os.remove('./get_accounts.flag')
 	return jsonify({'accounts': accounts})
 
 @app.route('/accounts/create', methods=['POST'])
 @auth.login_required
 def createUser():
+	print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: trying to create user...")
 	for i in range(5):
 		try:
 			username = 'user' + ''.join(random.choice(string.digits) for _ in range(5))
@@ -142,15 +152,19 @@ def createUser():
 					}
 				]
 			except KeyError:
+				print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: cannot create user " + username + "!")
 				abort(422)
 
+			print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: user " + username + " was successfully created")
 			return jsonify(apiAnswer[0])
 	else:
+		print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: cannot generate any proper username!")
 		abort(422)
 
 @app.route('/accounts/delete/<string:username>', methods=['POST'])
 @auth.login_required
 def deleteUser(username):
+	print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: trying to delete user " + username + "...")
 	try:
 		pwd.getpwnam(username)
 		removeUserCommand = 'userdel -r ' + username
@@ -161,14 +175,17 @@ def deleteUser(username):
 						}
 				]
 		cache.delete(username)
+		print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: user " + username + " was successfully deleted")
 		return jsonify(apiAnswer[0])
 	except KeyError:
+		print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: there is no user " + username + "!")
 		abort(404)
 
 
 @app.route('/accounts/resetpassword/<string:username>', methods=['POST'])
 @auth.login_required
 def resetPasswordFor(username):
+	print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: trying to change password for user " + username + "...")
 	try:
 		pwd.getpwnam(username)
 		password = ''.join(random.choice('0123456789abcdef') for _ in range (10))
@@ -181,11 +198,15 @@ def resetPasswordFor(username):
 						'password': password
 					}
 				]
+		print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: password for " + username + " was successfully changed")
 		return jsonify(apiAnswer[0])
 	except KeyError:
+		print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: there is no user " + username + "!")
 		abort(404)
 
 
 #Start app
 if __name__ == '__main__':
+	print("[" + time.strftime('%Y-%m-%d %H:%M:%S') + "]: starting server on " + hostname + ":" + portnumber)
 	app.run(debug=True, host=hostname, port=int(portnumber))
+
