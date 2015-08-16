@@ -131,8 +131,8 @@ def createUser():
 			password = ''.join(random.choice('0123456789abcdef') for _ in range (10))
 			createUserCommand = 'useradd --home-dir /home/' + username + ' --create-home --no-user-group --shell /usr/bin/nologin --comment api ' + username
 			setPasswordCommand = 'echo "' + username + ':' + password + '" | chpasswd'
-			create_result = subprocess.call(createUserCommand, shell=True)
-			set_password_result = subprocess.call(setPasswordCommand, shell=True)
+			subprocess.call(createUserCommand, shell=True)
+			subprocess.call(setPasswordCommand, shell=True)
 			try:
 				pwd.getpwnam(username)
 				for p in pwd.getpwnam(username):
@@ -168,7 +168,7 @@ def deleteUser(username):
 	try:
 		pwd.getpwnam(username)
 		removeUserCommand = 'userdel -r ' + username
-		remove_result = subprocess.call(removeUserCommand, shell=True)
+		subprocess.call(removeUserCommand, shell=True)
 		apiAnswer = [
 						{
 							'status': 'ok'
@@ -190,7 +190,7 @@ def resetPasswordFor(username):
 		pwd.getpwnam(username)
 		password = ''.join(random.choice('0123456789abcdef') for _ in range (10))
 		setPasswordCommand = 'echo "' + username + ':' + password + '" | chpasswd'
-		set_password_result = subprocess.call(setPasswordCommand, shell=True)
+		subprocess.call(setPasswordCommand, shell=True)
 		apiAnswer = [
 					{
 						'status': 'ok',
